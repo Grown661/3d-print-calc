@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>3D-Druck Kostenrechner</title>
+<style>
+  :root {
+    --bg: #0f1420; --card: #1a2130; --accent: #ff9f43; --text: #e8ecf4;
+    --muted: #8b95a8; --border: #2a3348; --ok: #2ecc71;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "Segoe UI", system-ui, sans-serif; background: var(--bg);
+    color: var(--text); min-height: 100vh; padding: 2rem 1rem;
+  }
+  .wrap { max-width: 860px; margin: 0 auto; }
+  h1 { font-size: 1.6rem; margin-bottom: .3rem; }
+  h1 span { color: var(--accent); }
+  .sub { color: var(--muted); margin-bottom: 1.5rem; font-size: .95rem; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  @media (max-width: 700px) { .grid { grid-template-columns: 1fr; } }
+  .card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 12px; padding: 1.2rem;
+  }
+  .card h2 { font-size: 1rem; margin-bottom: .9rem; color: var(--accent); }
+  label { display: block; font-size: .82rem; color: var(--muted); margin: .7rem 0 .25rem; }
+  input, select {
+    width: 100%; padding: .55rem .7rem; background: var(--bg); color: var(--text);
+    border: 1px solid var(--border); border-radius: 8px; font-size: .95rem;
+  }
+  input:focus, select:focus { outline: none; border-color: var(--accent); }
+  .mode { display: flex; gap: .5rem; margin-bottom: .3rem; }
+  .mode button {
+    flex: 1; padding: .5rem; background: var(--bg); color: var(--muted);
+    border: 1px solid var(--border); border-radius: 8px; cursor: pointer; font-size: .85rem;
+  }
+  .mode button.active { background: var(--accent); color: #1a1205; border-color: var(--accent); font-weight: 600; }
+  .presets { display: flex; gap: .4rem; margin-top: .3rem; }
+  .presets button {
+    padding: .3rem .7rem; font-size: .78rem; background: var(--bg); color: var(--text);
+    border: 1px solid var(--border); border-radius: 20px; cursor: pointer;
+  }
+  .presets button:hover { border-color: var(--accent); }
+  .result { grid-column: 1 / -1; }
+  .rows { display: grid; grid-template-columns: repeat(4, 1fr); gap: .8rem; }
+  @media (max-width: 700px) { .rows { grid-template-columns: repeat(2, 1fr); } }
+  .rbox { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: .9rem; text-align: center; }
+  .rbox .val { font-size: 1.35rem; font-weight: 700; margin-top: .2rem; }
+  .rbox.total .val { color: var(--accent); }
+  .rbox.sale .val { color: var(--ok); }
+  .hidden { display: none; }
+  footer { margin-top: 1.5rem; color: var(--muted); font-size: .8rem; text-align: center; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>3D-Druck <span>Kostenrechner</span></h1>
+  <p class="sub">Material, Strom und Marge – was kostet dein Druck wirklich?</p>
+
+  <div class="grid">
+    <div class="card">
+      <h2>Material</h2>
+      <label>Filament-Preis (CHF pro kg)</label>
+      <input type="number" id="pricePerKg" value="25" min="0" step="0.5">
+
+      <label>Eingabe-Modus</label>
+      <div class="mode">
+        <button id="modeWeight" class="active" type="button">Gewicht (g)</button>
+        <button id="modeLength" type="button">Länge + Durchmesser</button>
+      </div>
+
+      <div id="weightBlock">
+        <label>Gewicht (g) – aus dem Slicer</label>
+        <input type="number" id="weight" value="50" min="0" step="1">
+      </div>
+
+      <div id="lengthBlock" class="hidden">
+        <label>Filament-Länge (m)</label>
+        <input type="number" id="length" value="15" min="0" step="0.1">
+        <label>Durchmesser (mm)</label>
+        <input type="number" id="diameter" value="1.75" min="0" step="0.01">
+        <label>Dichte (g/cm³)</label>
+        <input type="number" id="density" value="1.24" min="0" step="0.01">
+        <div class="presets">
+          <button type="button" data-density="1.24">PLA</button>
+          <button type="button" data-density="1.27">PETG</button>
+          <button type="button" data-density="1.04">ABS</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Strom &amp; Aufschlag</h2>
+      <label>Druckdauer (Stunden)</label>
+      <input type="number" id="hours" value="3" min="0" step="0.25">
+      <label>Drucker-Leistung (Watt, Durchschnitt)</label>
+      <input type="number" id="watts" value="120" min="0" step="5">
+      <label>Strompreis (CHF pro kWh)</label>
+      <input type="number" id="kwhPrice" value="0.27" min="0" step="0.01">
+      <label>Verschleiss- / Fehldruck-Pauschale (CHF)</label>
+      <input type="number" id="surcharge" value="0.50" min="0" step="0.1">
+      <label>Marge für Verkaufspreis (%)</label>
+      <input type="number" id="margin" value="30" min="0" step="5">
+    </div>
+
+    <div class="card result">
+      <h2>Ergebnis</h2>
+      <div class="rows">
+        <div class="rbox"><div>Material</div><div class="val" id="rMat">–</div></div>
+        <div class="rbox"><div>Strom</div><div class="val" id="rPow">–</div></div>
+        <div class="rbox total"><div>Gesamtkosten</div><div class="val" id="rTotal">–</div></div>
+        <div class="rbox sale"><div>Verkaufspreis</div><div class="val" id="rSale">–</div></div>
+      </div>
+    </div>
+  </div>
+  <footer>Alle Berechnungen laufen lokal im Browser. Letzte Eingaben werden gespeichert.</footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  const $ = (id) => document.getElementById(id);
+  const inputs = ["pricePerKg","weight","length","diameter","density","hours","watts","kwhPrice","surcharge","margin"];
+  const STORAGE_KEY = "print-calc-v1";
+  let mode = "weight";
+
+  function grams() {
+    if (mode === "weight") return +$("weight").value || 0;
+    const lenMm = (+$("length").value || 0) * 1000;
+    const r = (+$("diameter").value || 0) / 2;
+    const volCm3 = (Math.PI * r * r * lenMm) / 1000; // mm3 -> cm3
+    return volCm3 * (+$("density").value || 0);
+  }
+
+  function chf(v) { return v.toFixed(2) + " CHF"; }
+
+  function calc() {
+    const g = grams();
+    const mat = (g / 1000) * (+$("pricePerKg").value || 0);
+    const pow = (+$("hours").value || 0) * (+$("watts").value || 0) / 1000 * (+$("kwhPrice").value || 0);
+    const total = mat + pow + (+$("surcharge").value || 0);
+    const sale = total * (1 + (+$("margin").value || 0) / 100);
+    $("rMat").textContent = chf(mat);
+    $("rPow").textContent = chf(pow);
+    $("rTotal").textContent = chf(total);
+    $("rSale").textContent = chf(sale);
+    save();
+  }
+
+  function save() {
+    const data = { mode };
+    inputs.forEach((id) => (data[id] = $(id).value));
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch (e) {}
+  }
+
+  function load() {
+    try {
+      const data = JSON.parse(localStorage.getItem(STORAGE_KEY));
+      if (!data) return;
+      inputs.forEach((id) => { if (data[id] !== undefined) $(id).value = data[id]; });
+      if (data.mode) setMode(data.mode);
+    } catch (e) {}
+  }
+
+  function setMode(m) {
+    mode = m;
+    $("modeWeight").classList.toggle("active", m === "weight");
+    $("modeLength").classList.toggle("active", m === "length");
+    $("weightBlock").classList.toggle("hidden", m !== "weight");
+    $("lengthBlock").classList.toggle("hidden", m !== "length");
+    calc();
+  }
+
+  $("modeWeight").addEventListener("click", () => setMode("weight"));
+  $("modeLength").addEventListener("click", () => setMode("length"));
+  document.querySelectorAll(".presets button").forEach((b) =>
+    b.addEventListener("click", () => { $("density").value = b.dataset.density; calc(); })
+  );
+  inputs.forEach((id) => $(id).addEventListener("input", calc));
+
+  load();
+  calc();
+})();
+</script>
+</body>
+</html>
