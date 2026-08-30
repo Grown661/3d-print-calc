@@ -1,5 +1,7 @@
 # 3D-Druck Kostenrechner
 
+**Live-Demo:** https://grown661.github.io/3d-print-calc/
+
 Was kostet ein 3D-Druck wirklich? Dieser Rechner ermittelt Material-, Strom- und Gesamtkosten inklusive Verkaufspreis mit Marge – komplett im Browser.
 
 ## Features
